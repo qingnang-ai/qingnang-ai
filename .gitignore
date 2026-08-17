@@ -2,11 +2,11 @@ __pycache__/
 *.pyc
 *.pyo
 qingnang.db
-best.pt
+# best.pt - included in repo for open source
 *.log
 .env
 venv/
 .venv/
 node_modules/
 *.pptx
-static/video/intro.mp4
+# intro.mp4 - included in repo for open source
