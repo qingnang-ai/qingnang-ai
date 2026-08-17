@@ -33,129 +33,45 @@
 ### 青囊客服
 - 平台智能客服，解答功能使用、产品咨询、订单问题
 - 结合用户检测数据推荐合适的养生产品
-- 健康咨询引导至四诊功能检测
 
-### 养生坊商城
-- 基于体质分析的商品推荐
-- 支付宝支付集成（RSA2签名）
-- 订单管理
+## 安装与部署
 
-### 舌象图谱
-- 中医舌象科普图谱展示
-
-## 技术栈
-
-| 层级 | 技术 |
-|------|------|
-| 后端 | Python 3.10+ · Flask |
-| AI 引擎 | DeepSeek API · YOLOv8 (Ultralytics) |
-| 图像处理 | OpenCV · Pillow |
-| 数据库 | SQLite |
-| 支付 | 支付宝当面付（RSA2签名） |
-| 前端 | HTML / CSS / JavaScript |
-| 认证 | Werkzeug PBKDF2 |
-
-## 快速开始
-
-### 1. 克隆仓库
+### 克隆仓库
 
 ```bash
-git clone https://github.com/your-username/qingnang-ai.git
+git clone https://github.com/qingnang-ai/qingnang-ai.git
 cd qingnang-ai
 ```
 
-### 2. 安装依赖
+### 依赖安装
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. 环境配置
+### 模型准备
 
-复制 `.env.example` 为 `.env` 并填入你的配置：
+YOLO 模型 best.pt 已包含在仓库中，克隆后无需额外下载。
 
-```bash
-cp .env.example .env
-```
-
-```env
-# 必填
-FLASK_SECRET_KEY=your-random-secret-key
-DEEPSEEK_API_KEY=your-deepseek-api-key
-ADMIN_NAME=青囊馆主
-ADMIN_PASSWORD=your-admin-password
-
-# 可选（支付宝）
-ALIPAY_APP_ID=your-app-id
-ALIPAY_APP_PRIVATE_KEY=your-private-key
-ALIPAY_ALIPAY_PUBLIC_KEY=alipay-public-key
-```
-
-> 也可直接在 `app.py` 顶部配置区域修改。
-
-### 4. 放置模型
-
-将训练好的 YOLO 模型放置到默认路径：
+## 目录结构
 
 ```
-~/yolo/best.pt
+qingnang-ai/
+├── app.py           # FastAPI 主应用入口
+├── best.pt          # YOLO 训练好的权重文件
+├── README.md        # 项目说明文档
+├── requirements.txt # Python 依赖列表
+└── static/
+    ├── images/      # 静态图片资源
+    └── video/intro.mp4   # 介绍视频
 ```
 
-或通过环境变量指定：
+## 使用说明
 
-```env
-YOLO_MODEL_PATH=/path/to/your/best.pt
-```
-
-### 5. 启动
+启动服务：
 
 ```bash
 python app.py
 ```
 
-访问 http://127.0.0.1:5000
-
-## 管理员后台
-
-- 访问 http://127.0.0.1:5000/admin/login
-- 账号密码通过环境变量 `ADMIN_NAME` 和 `ADMIN_PASSWORD` 配置
-- 修改方式：编辑 `.env` 文件或 `app.py` 中对应变量
-
-## 项目结构
-
-```
-qingnang-ai/
-├── app.py                 # 主应用（路由、模型、API）
-├── .env.example           # 环境变量示例
-├── .gitignore
-├── requirements.txt       # Python 依赖
-├── LICENSE                # MIT 协议
-├── README.md
-├── static/
-│   ├── css/style.css      # 中国风样式
-│   └── images/            # 望闻问切图片
-└── templates/
-    ├── base.html          # 基础模板（导航栏、弹窗）
-    ├── index.html         # 首页
-    ├── tongue.html        # 舌象分析（支持拍照）
-    ├── voice.html         # 声音分析
-    ├── face.html          # 面相分析
-    ├── questionnaire.html # 体质问卷
-    ├── report.html        # AI健康报告
-    ├── agent.html         # 青囊客服
-    ├── shop.html          # 养生坊商城
-    ├── orders.html        # 订单管理
-    ├── pay_result.html    # 支付结果
-    ├── atlas.html         # 舌象图谱
-    ├── auth.html          # 登录注册
-    ├── dashboard.html     # 用户仪表盘
-    └── admin*.html        # 管理后台页面
-```
-
-## 免责声明
-
-本应用仅作中医体质健康科普参考，不构成医疗诊断。身体不适请及时就医。
-
-## 开源协议
-
-MIT License
+然后在浏览器打开 http://localhost:8000 即可访问系统。
