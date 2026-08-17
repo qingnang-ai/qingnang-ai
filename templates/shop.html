@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}青囊养生坊{% endblock %}
+{% block nav_shop %}active{% endblock %}
+
+{% block content %}
+<div class="shop-header">
+    <div class="shop-title-area">
+        <div class="shop-icon">🛒</div>
+        <div>
+            <div class="shop-title">青囊养生坊</div>
+            <div class="shop-subtitle">基于体质分析的精准养生商品推荐</div>
+        </div>
+    </div>
+    {% if current_user %}
+    <a href="/orders" class="btn btn-outline">📋 我的订单</a>
+    {% endif %}
+</div>
+
+<div class="shop-grid">
+    {% for p in products %}
+    <div class="shop-card">
+        <div class="shop-card-top">
+            <div class="shop-card-icon">{{ p.icon }}</div>
+            <div class="shop-card-tag">药食同源</div>
+        </div>
+        <div class="shop-card-name">{{ p.name }}</div>
+        <div class="shop-card-desc">{{ p.desc }}</div>
+        <div class="shop-card-bottom">
+            <div class="shop-card-price">¥{{ p.price }}</div>
+            <button class="btn btn-gold btn-buy" onclick="buyProduct('{{ p.id }}', '{{ p.name }}')">
+                立即购买
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="shop-notice">
+    <div class="notice-icon">⚠️</div>
+    <div class="notice-text">
+        本商城商品均为药食同源食材，非药品。体质食疗推荐仅作日常饮食参考，不替代专业营养师或医师建议。<br>
+        {% if not current_user %}
+        💡 <a href="/login" style="color:var(--gold);font-weight:600;">登录</a>后购买可保存订单记录
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function buyProduct(pid, pname){
+    if(!confirm('确认购买「' + pname + '」？\n将跳转至支付宝完成支付。')){
+        return;
+    }
+    var btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '正在创建订单...';
+
+    fetch('/api/create_order', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({product_id: pid})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        btn.disabled = false;
+        btn.textContent = '立即购买';
+        if(d.error){
+            alert(d.error);
+            return;
+        }
+        if(d.pay_url){
+            window.location.href = d.pay_url;
+        } else {
+            alert(d.message || '订单已创建，支付功能即将上线');
+        }
+    })
+    .catch(function(e){
+        btn.disabled = false;
+        btn.textContent = '立即购买';
+        alert('网络错误，请稍后再试');
+    });
+}
+</script>
+{% endblock %}
