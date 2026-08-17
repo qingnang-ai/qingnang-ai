@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}我的主页{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="dashboard-header">
+        <div>
+            <h1>👋 {{ current_user.username }}，欢迎回来</h1>
+            <p>这里保存着您孩子的所有体质检测记录</p>
+        </div>
+        <a href="/tongue" class="btn btn-gold">👅 开始新检测</a>
+    </div>
+
+    <!-- 保存当前检测 -->
+    <div class="card" id="saveCard" style="display:none;">
+        <div class="card-title">💾 保存当前检测记录</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">您有未保存的检测结果，填写孩子信息后保存到记录中</p>
+        <div class="save-form">
+            <input type="text" id="childName" placeholder="孩子昵称（如：小明）" class="save-input">
+            <select id="childAge" class="save-input">
+                <option value="1-3">1-3岁</option>
+                <option value="4-6">4-6岁</option>
+                <option value="7-12">7-12岁</option>
+            </select>
+            <button class="btn btn-gold" onclick="saveCurrentRecord()">保存记录</button>
+        </div>
+    </div>
+
+    <!-- 记录列表 -->
+    <div class="section-header" style="margin-top:24px;">
+        <h2>健康检测记录</h2>
+        <p>共 {{ records|length }} 条记录</p>
+    </div>
+
+    {% if records %}
+    <div class="record-list">
+        {% for r in records %}
+        <div class="record-card">
+            <div class="record-main" onclick="location.href='/dashboard/record/{{ r.id }}'">
+                <div class="record-icon">📋</div>
+                <div class="record-info">
+                    <div class="record-title">
+                        {{ r.child_name if r.child_name else '未填写' }}
+                        {% if r.child_age %}<span class="record-age">{{ r.child_age }}</span>{% endif %}
+                    </div>
+                    <div class="record-meta">
+                        {% if r.tongue_primary %}<span class="tag tag-jade">{{ r.tongue_primary }}</span>{% endif %}
+                        {% if r.ai_report %}<span class="tag tag-gold">有AI报告</span>{% endif %}
+                        <span class="record-time">{{ r.created_at }}</span>
+                    </div>
+                </div>
+                <div class="record-arrow">›</div>
+            </div>
+            <div class="record-actions">
+                <a href="/dashboard/record/{{ r.id }}" class="btn btn-sm btn-outline">查看详情</a>
+                <button class="btn btn-sm btn-danger-soft" onclick="deleteRecord({{ r.id }})">删除</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>暂无检测记录</p>
+        <a href="/tongue" class="btn btn-gold btn-lg">开始第一次检测</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 检查是否有未保存的检测数据
+fetch('/api/status').then(r=>r.json()).then(d=>{
+    if(d.logged_in && (d.tongue || d.qa)){
+        document.getElementById('saveCard').style.display = 'block';
+    }
+});
+
+function saveCurrentRecord(){
+    var name = document.getElementById('childName').value.trim();
+    var age = document.getElementById('childAge').value;
+    fetch('/api/save_record', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({child_name: name, child_age: age})
+    }).then(r=>r.json()).then(d=>{
+        if(d.ok){
+            alert('记录已保存！');
+            location.reload();
+        } else {
+            alert('保存失败：' + (d.error || '未知错误'));
+        }
+    });
+}
+
+function deleteRecord(id){
+    if(!confirm('确定删除这条记录吗？')) return;
+    fetch('/api/delete_record/' + id, {method:'POST'})
+        .then(r=>r.json()).then(d=>{
+            if(d.ok) location.reload();
+        });
+}
+</script>
+{% endblock %}
