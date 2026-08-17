@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}舌象分析{% endblock %}
+{% block nav_tongue %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">👅 舌象智能检测</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">支持拍照或上传图片，本地 YOLO best.pt 自动检测21种舌象特征</p>
+
+    <div style="display:flex; gap:12px; align-items:stretch;">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" style="flex:1;">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">点击上传舌象图片（JPG/PNG）</div>
+            <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
+        </div>
+        <button class="btn btn-outline" onclick="openCamera()" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:120px; border:2px dashed var(--jade); border-radius:12px; background:rgba(15,64,42,.04);">
+            <span style="font-size:28px;">📸</span>
+            <span style="font-size:13px; color:var(--jade-deep); font-weight:600; margin-top:4px;">直接拍照</span>
+        </button>
+    </div>
+
+    <div id="cameraModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:9999; align-items:center; justify-content:center; display:none;">
+        <div style="background:var(--paper); border-radius:16px; padding:20px; max-width:560px; width:90%; box-shadow:0 12px 40px rgba(0,0,0,.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:16px; font-weight:700; color:var(--jade-deep);">📸 拍照检测</span>
+                <button onclick="closeCamera()" style="border:none; background:none; font-size:24px; color:var(--muted); cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div style="position:relative; border-radius:12px; overflow:hidden; background:#000;">
+                <video id="cameraVideo" autoplay playsinline style="width:100%; display:block;"></video>
+                <div id="cameraTip" style="position:absolute; bottom:8px; left:0; right:0; text-align:center; color:#fff; font-size:12px; background:rgba(0,0,0,.4); padding:4px;">请将舌头伸出口腔，保持自然光线下拍摄</div>
+            </div>
+            <canvas id="cameraCanvas" style="display:none;"></canvas>
+            <div style="display:flex; gap:12px; margin-top:14px; justify-content:center;">
+                <button onclick="capturePhoto()" class="btn btn-primary" style="padding:10px 32px;">📷 拍照</button>
+                <button onclick="closeCamera()" class="btn btn-outline" style="padding:10px 24px;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top:16px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:13px; color:var(--muted);">置信度</label>
+            <input type="range" id="confSlider" min="0.10" max="0.90" value="0.30" step="0.05" style="width:120px;">
+            <span id="confVal" style="font-size:13px; color:var(--gold); font-weight:700; min-width:35px;">0.30</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:13px; color:var(--muted);">IoU</label>
+            <input type="range" id="iouSlider" min="0.20" max="0.80" value="0.50" step="0.05" style="width:100px;">
+            <span id="iouVal" style="font-size:13px; color:var(--gold); font-weight:700; min-width:35px;">0.50</span>
+        </div>
+        <button class="btn btn-primary" id="detectBtn" onclick="startDetect()" style="margin-left:auto;">🔍 开始检测</button>
+    </div>
+
+    <div class="tip-strip" style="margin-top:16px;">
+        <b>📸 拍摄建议：</b>自然光 · 舌体平展 · 无滤镜 · 画面清晰 · 避免过暗或模糊
+    </div>
+</div>
+
+<div id="loadingDiv" class="card hidden">
+    <div class="loader"></div>
+    <p class="text-center" style="color:var(--muted);">best.pt 正在识别舌象特征……</p>
+</div>
+
+<div id="resultDiv" class="hidden"></div>
+
+<div class="danger-strip">
+    ⚠️ 图像分析仅作体质参考，不能替代中医师面诊。AI检测结果受拍摄光线、角度等因素影响。
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+
+document.getElementById('confSlider').oninput = function(){
+    document.getElementById('confVal').textContent = parseFloat(this.value).toFixed(2);
+};
+document.getElementById('iouSlider').oninput = function(){
+    document.getElementById('iouVal').textContent = parseFloat(this.value).toFixed(2);
+};
+
+function handleFile(input){
+    const file = input.files[0];
+    if(!file) return;
+    selectedFile = file;
+    showPreview(file);
+}
+
+function showPreview(file){
+    const reader = new FileReader();
+    reader.onload = function(e){
+        const zone = document.getElementById('uploadZone');
+        const input = document.getElementById('fileInput');
+        zone.innerHTML = '<img src="'+e.target.result+'" style="max-width:100%; max-height:300px; border-radius:12px;"><div class="upload-text" style="margin-top:8px;">点击重新选择</div>';
+        zone.appendChild(input);
+    };
+    reader.readAsDataURL(file);
+}
+
+let cameraStream = null;
+
+function openCamera(){
+    const modal = document.getElementById('cameraModal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment', width:{ideal:1280}, height:{ideal:720}}})
+    .then(stream=>{
+        cameraStream = stream;
+        document.getElementById('cameraVideo').srcObject = stream;
+    })
+    .catch(err=>{
+        alert('无法访问摄像头：'+err.message+'\n请检查浏览器权限设置，或使用上传图片方式。');
+        closeCamera();
+    });
+}
+
+function closeCamera(){
+    const modal = document.getElementById('cameraModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+    if(cameraStream){
+        cameraStream.getTracks().forEach(t=>t.stop());
+        cameraStream = null;
+    }
+}
+
+function capturePhoto(){
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(blob=>{
+        const file = new File([blob], 'camera_capture.jpg', {type:'image/jpeg'});
+        selectedFile = file;
+        showPreview(file);
+        closeCamera();
+    }, 'image/jpeg', 0.92);
+}
+
+function startDetect(){
+    if(!selectedFile){ alert('请先拍照或上传图片'); return; }
+    document.getElementById('loadingDiv').classList.remove('hidden');
+    document.getElementById('resultDiv').classList.add('hidden');
+
+    const fd = new FormData();
+    fd.append('image', selectedFile);
+    fd.append('confidence', document.getElementById('confSlider').value);
+    fd.append('iou', document.getElementById('iouSlider').value);
+
+    fetch('/api/detect', {method:'POST', body:fd})
+    .then(r=>r.json())
+    .then(d=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        if(d.error){ alert(d.error); return; }
+        showResult(d);
+    })
+    .catch(e=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        alert('检测失败：'+e);
+    });
+}
+
+function showResult(d){
+    const uf = d.unique_features;
+    const w = d.wellness;
+    let featCards = '';
+    if(uf.length > 0){
+        featCards = uf.map(f=>{
+            const tipsHtml = f.tips.map(t=>`<span class="chip">${t}</span>`).join('');
+            const foodsHtml = f.foods.map(food=>`<span class="chip" style="background:rgba(200,155,71,.12); border-color:rgba(200,155,71,.2); color:#7a6230;">${food}</span>`).join('');
+            return `<div class="feat-result-card mb-20">
+                <div class="feat-header">
+                    <div>
+                        <span class="feat-name">${f.cn_name}</span>
+                        <span class="feat-tag">${f.group}</span>
+                        <span class="feat-conf">${(f.confidence*100).toFixed(1)}% · ${f.confidence_level}</span>
+                    </div>
+                </div>
+                <div class="feat-desc">${f.desc}</div>
+                <div class="feat-tcm"><b>传统舌象视角：</b>${f.tcm}</div>
+                <div style="margin-top:8px;"><b style="font-size:12px; color:var(--jade);">💡 生活提示</b><br>${tipsHtml}</div>
+                <div style="margin-top:6px;"><b style="font-size:12px; color:var(--gold);">🥗 饮食参考</b><br>${foodsHtml}</div>
+            </div>`;
+        }).join('');
+    } else {
+        featCards = '<p style="color:var(--muted); text-align:center; padding:20px;">当前置信度阈值下没有检测到舌象特征，可以尝试降低阈值或重新拍摄。</p>';
+    }
+
+    const constBadges = d.constitution_scores && Object.keys(d.constitution_scores).length > 0
+        ? Object.entries(d.constitution_scores).map(([k,v])=>`<span class="const-badge ${v>3?'judge':'tend'}">${k} ${v.toFixed(1)}</span>`).join('')
+        : '<span style="color:var(--muted); font-size:13px;">无明显偏颇倾向</span>';
+
+    const tipsHtml = w.tips.map(t=>`<div style="padding:4px 0; font-size:13px;">• ${t}</div>`).join('');
+    const foodsHtml = w.foods.map(f=>`<span class="chip" style="background:rgba(200,155,71,.12); border-color:rgba(200,155,71,.2); color:#7a6230;">${f}</span>`).join('');
+
+    const detTable = d.detections.length > 0
+        ? `<details style="margin-top:12px;"><summary style="cursor:pointer; font-size:13px; color:var(--jade); padding:8px 0;">📋 查看全部 ${d.detections.length} 个检测框与坐标</summary>
+            <table style="width:100%; border-collapse:collapse; margin-top:8px; font-size:12px;">
+            <thead><tr style="border-bottom:2px solid var(--line);"><th style="text-align:left; padding:6px;">#</th><th style="text-align:left; padding:6px;">标签</th><th style="text-align:left; padding:6px;">中文</th><th style="text-align:left; padding:6px;">分组</th><th style="text-align:right; padding:6px;">置信度</th><th style="text-align:right; padding:6px;">面积%</th></tr></thead>
+            <tbody>${d.detections.map(x=>`<tr style="border-bottom:1px solid var(--line);"><td style="padding:6px;">${x.index}</td><td style="padding:6px;">${x.raw_name}</td><td style="padding:6px;">${x.cn_name}</td><td style="padding:6px;">${x.group}</td><td style="text-align:right; padding:6px; color:var(--gold);">${(x.confidence*100).toFixed(1)}%</td><td style="text-align:right; padding:6px;">${x.box_area_percent}%</td></tr>`).join('')}
+            </tbody></table></details>`
+        : '';
+
+    const html = `
+    <div class="card">
+        <div class="card-title">🔍 AI识别结果 · ${d.time}</div>
+        <div class="img-compare mb-20">
+            <div class="img-box">
+                <img src="data:image/jpeg;base64,${d.original_image}">
+                <div class="img-label">原始舌象</div>
+            </div>
+            <div class="img-box">
+                <img src="data:image/jpeg;base64,${d.annotated_image}">
+                <div class="img-label">特征检测框</div>
+            </div>
+        </div>
+        <div class="grid-3 mb-20">
+            <div class="status-item"><span class="status-dot ok"></span>检测框 ${d.detections.length} · 去重 ${uf.length}</div>
+            <div class="status-item"><span class="status-dot ok"></span>耗时 ${d.elapsed}ms</div>
+            <div class="status-item"><span class="status-dot ok"></span>倾向 ${d.primary_constitution}</div>
+        </div>
+        ${detTable}
+    </div>
+
+    <div class="card">
+        <div class="card-title">🩺 舌象特征解读</div>
+        ${featCards}
+    </div>
+
+    <div class="card">
+        <div class="card-title">🏷️ 体质倾向</div>
+        <div style="margin-bottom:12px;">${constBadges}</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🥗 健康生活与饮食参考</div>
+        <div class="tip-strip"><b>${w.headline}</b></div>
+        <div class="grid-2 mt-20">
+            <div>
+                <b style="font-size:14px; color:var(--jade-deep);">🌙 今天可以注意</b>
+                ${tipsHtml}
+            </div>
+            <div>
+                <b style="font-size:14px; color:var(--jade-deep);">🥗 饮食搭配参考</b>
+                <div style="margin-top:8px;">${foodsHtml}</div>
+                <p style="font-size:12px; color:var(--muted); margin-top:8px;">普通食物与饮食方式建议，不是食疗处方，不替代营养师或医生的个体化建议。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-20" style="padding-bottom:20px;">
+        <a href="/report" class="btn btn-gold">🤖 生成AI报告</a>
+        <a href="/questionnaire" class="btn btn-outline" style="margin-left:8px;">📋 填写问卷</a>
+    </div>`;
+
+    document.getElementById('resultDiv').innerHTML = html;
+    document.getElementById('resultDiv').classList.remove('hidden');
+    document.getElementById('resultDiv').scrollIntoView({behavior:'smooth'});
+}
+</script>
+{% endblock %}
