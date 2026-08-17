@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}记录详情 · 管理后台{% endblock %}
+
+{% block content %}
+<div class="admin-page record-detail-page">
+    <a href="/admin" class="back-link">← 返回管理后台</a>
+
+    <div class="detail-header">
+        <h1>📝 记录 #{{ record.id }}</h1>
+        <p>用户：{{ record.username }} · 创建时间：{{ record.created_at }}</p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">👶 孩子信息</div>
+        <div class="detail-row"><span class="detail-label">昵称：</span>{{ record.child_name or '未填写' }}</div>
+        <div class="detail-row"><span class="detail-label">年龄段：</span>{{ record.child_age or '未填写' }}</div>
+    </div>
+
+    {% if record.tongue_primary %}
+    <div class="card">
+        <div class="card-title">👅 舌象分析</div>
+        <div class="detail-row"><span class="detail-label">体质倾向：</span><span class="const-badge judge">{{ record.tongue_primary }}</span></div>
+        {% set features = record.tongue_features | from_json %}
+        {% if features %}
+        <div class="detail-sub">
+            <strong>检测到的特征：</strong>
+            <div class="feature-tags">
+                {% for f in features %}
+                <span class="chip">{{ f.cn_name }}（{{ (f.confidence * 100)|round(1) }}%）</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% set scores = record.constitution_scores | from_json %}
+        {% if scores %}
+        <div class="detail-sub">
+            <strong>体质评分：</strong>
+            <table class="detail-table">
+                <thead><tr><th>体质类型</th><th>评分</th></tr></thead>
+                <tbody>
+                    {% for name, score in scores.items() %}
+                    <tr><td>{{ name }}</td><td>{{ score }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        {% set tips = record.wellness_tips | from_json %}
+        {% set foods = record.wellness_foods | from_json %}
+        {% if tips %}
+        <div class="detail-sub">
+            <strong>健康提示：</strong>
+            <ul>{% for tip in tips %}<li>{{ tip }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        {% if foods %}
+        <div class="detail-sub">
+            <strong>推荐食材：</strong>
+            <ul>{% for food in foods %}<li>{{ food }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if record.qa_results %}
+    <div class="card">
+        <div class="card-title">📋 体质问卷</div>
+        <div class="detail-row"><span class="detail-label">年龄段：</span>{{ record.qa_age or '未填写' }}</div>
+        {% set qa = record.qa_results | from_json %}
+        {% if qa %}
+        <div class="detail-sub">
+            <table class="detail-table">
+                <thead><tr><th>体质类型</th><th>判定</th><th>评分</th></tr></thead>
+                <tbody>
+                    {% for r in qa %}
+                    <tr>
+                        <td>{{ r.name }}</td>
+                        <td>
+                            {% if r.level == '判定' %}
+                            <span class="const-badge judge">{{ r.level }}</span>
+                            {% else %}
+                            <span class="const-badge tend">{{ r.level }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ r.score }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if record.ai_report %}
+    <div class="card">
+        <div class="card-title">🤖 AI健康报告</div>
+        <div class="ai-report-content">{{ record.ai_report }}</div>
+    </div>
+    {% endif %}
+
+    {% if not record.tongue_primary and not record.qa_results and not record.ai_report %}
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>该记录无详细数据</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="detail-actions">
+        <a href="/admin" class="btn btn-outline">返回后台</a>
+    </div>
+</div>
+{% endblock %}
