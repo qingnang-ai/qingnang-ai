@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}青囊AI{% endblock %} · 舌象与体质分析</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+</head>
+<body>
+    <!-- 入场动画视频 -->
+    <div id="introOverlay" class="intro-overlay">
+        <video id="introVideo" autoplay muted playsinline>
+            <source src="{{ url_for('static', filename='video/intro.mp4') }}" type="video/mp4">
+        </video>
+        <div class="intro-skip" id="introSkip">点击跳过 ›</div>
+        <div class="intro-fade-bottom"></div>
+    </div>
+
+    <nav class="navbar">
+        <a href="/" class="nav-brand">
+            <div class="logo">🌿</div>
+            <div>
+                <div class="name">青囊AI</div>
+                <div class="sub">TCM × AI</div>
+            </div>
+        </a>
+        <div class="nav-links">
+            <a href="/" class="{% block nav_home %}{% endblock %}">🏠 首页</a>
+            <a href="/tongue" class="{% block nav_tongue %}{% endblock %}">👅 舌象</a>
+            <a href="/face" class="{% block nav_face %}{% endblock %}">👁️ 面相</a>
+            <a href="/voice" class="{% block nav_voice %}{% endblock %}">🎤 声音</a>
+            <a href="/questionnaire" class="{% block nav_qa %}{% endblock %}">📋 问卷</a>
+            <a href="/report" class="{% block nav_report %}{% endblock %}">🤖 报告</a>
+            <a href="/agent" class="{% block nav_agent %}{% endblock %}" style="color:var(--gold);font-weight:600;">🎧 客服</a>
+            <a href="/shop" class="{% block nav_shop %}{% endblock %}">🛒 养生坊</a>
+            <a href="/atlas" class="{% block nav_atlas %}{% endblock %}">📚 图谱</a>
+            {% if current_user %}
+            <a href="/dashboard" class="nav-user">👤 {{ current_user.username }}</a>
+            <a href="/logout" class="nav-logout">退出</a>
+            {% else %}
+            <a href="/login" class="nav-login">登录</a>
+            <a href="/register" class="nav-cta">免费注册</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="seal">青</div>
+                <div class="footer-brand-text">
+                    <div class="footer-brand-name">青囊AI <span class="footer-brand-sub">QingNang AI</span></div>
+                    <div class="footer-brand-desc">取意"青囊书"——华佗所传中医经典之名，寓意传承千年医道智慧；以AI之眼观舌象，以古人之智辨体质。</div>
+                </div>
+            </div>
+            <div class="footer-links">
+                <a href="javascript:void(0)" onclick="openModal('aboutModal')">关于青囊</a>
+                <span class="footer-divider">·</span>
+                <a href="javascript:void(0)" onclick="openModal('disclaimerModal')">免责声明</a>
+                <span class="footer-divider">·</span>
+                <span>YOLO舌象检测 + 儿童体质问卷 + DeepSeek AI分析</span>
+                <span class="footer-divider">·</span>
+                <a href="/admin/login" style="font-size:11px;color:var(--muted);opacity:.6;">管理员</a>
+            </div>
+            <p class="footer-copy">© 2026 青囊AI · 本应用仅作中医体质健康科普参考，不构成医疗诊断</p>
+        </div>
+    </footer>
+
+    <!-- ===== 免责声明弹窗 ===== -->
+    <div class="modal-overlay" id="disclaimerModal" onclick="if(event.target===this)closeModal('disclaimerModal')">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span class="modal-icon">⚠️</span>
+                <span class="modal-title">免责声明</span>
+                <span class="modal-close" onclick="closeModal('disclaimerModal')">✕</span>
+            </div>
+            <div class="modal-body">
+                <p><strong>一、服务性质</strong></p>
+                <p>青囊AI是一个基于人工智能与中医舌诊理论的<strong>健康科普工具</strong>，所有分析结果仅供日常健康参考与学习交流，<strong>不构成任何形式的医疗诊断、治疗建议或处方依据</strong>。</p>
+                <p><strong>二、检测结果限制</strong></p>
+                <p>舌象检测基于YOLO目标检测模型，检测结果可能受到拍摄光线、角度、图片质量、设备差异等因素影响；体质问卷基于标准化量表，但个体差异可能导致结果偏差。两者均<strong>不能替代专业医师的当面诊断</strong>。</p>
+                <p><strong>三、AI报告说明</strong></p>
+                <p>AI健康报告由DeepSeek大语言模型生成，内容为基于检测数据的<strong>体质调养建议参考</strong>，可能存在不准确或不适用的情况，请理性对待。</p>
+                <p><strong>四、就医提示</strong></p>
+                <p>如您或孩子出现身体不适，请<strong>及时前往正规医疗机构就诊</strong>，切勿因本应用的分析结果延误就医或自行用药。</p>
+                <p><strong>五、隐私说明</strong></p>
+                <p>舌象图片在本地模型处理，不上传至云端；问卷数据仅存于当前浏览器会话，关闭浏览器后自动清除。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-gold btn-modal" onclick="sessionStorage.setItem('disclaimer_accepted','1');closeModal('disclaimerModal')">我已阅读并理解</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 关于青囊弹窗 ===== -->
+    <div class="modal-overlay" id="aboutModal" onclick="if(event.target===this)closeModal('aboutModal')">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span class="modal-icon">🌿</span>
+                <span class="modal-title">关于青囊AI</span>
+                <span class="modal-close" onclick="closeModal('aboutModal')">✕</span>
+            </div>
+            <div class="modal-body">
+                <p><strong>「青囊」之名</strong></p>
+                <p>"青囊"二字源自东汉名医华佗所传之医书《青囊书》。相传华佗临终前将毕生医术精华写入青囊，托付于狱吏，虽书终未传世，但"青囊"一词遂成为<strong>中医智慧传承</strong>的象征。</p>
+                <p>我们取名"青囊AI"，正是希望以现代人工智能技术，<strong>延续千年医道传承</strong>，让传统舌诊智慧走进更多家庭。</p>
+                <p><strong>技术架构</strong></p>
+                <p>· <strong>舌象检测</strong>：基于YOLO目标检测模型，本地运行，可识别21种舌象特征（舌色、舌形、舌苔、区域形态等），无需联网即可完成分析</p>
+                <p>· <strong>体质分型</strong>：依据《儿童体质中医分型与判定标准》（赵霞等主编，2023年出版），覆盖15种体质类型，舌象数据自动融入评分</p>
+                <p>· <strong>AI报告</strong>：由DeepSeek大语言模型综合分析，生成通俗易懂的个性化调养建议</p>
+                <p><strong>适用人群</strong></p>
+                <p>面向1-12岁儿童的家长，提供中医体质科普参考与日常调养指导。</p>
+                <p><strong>温馨提示</strong></p>
+                <p>本应用为健康科普工具，所有结果仅供参考，不能替代专业医疗诊断。详见<a href="javascript:void(0)" onclick="closeModal('aboutModal');openModal('disclaimerModal')" style="color:var(--gold);text-decoration:underline">免责声明</a>。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline btn-modal" onclick="closeModal('aboutModal')">了解了</button>
+            </div>
+        </div>
+    </div>
+
+    {% block scripts %}{% endblock %}
+
+    <script>
+    // ===== 弹窗通用控制 =====
+    function openModal(id){
+        var m = document.getElementById(id);
+        if(m){ m.classList.add('modal-show'); document.body.style.overflow = 'hidden'; }
+    }
+    function closeModal(id){
+        var m = document.getElementById(id);
+        if(m){ m.classList.remove('modal-show'); document.body.style.overflow = ''; }
+    }
+    // ESC关闭
+    document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape'){
+            document.querySelectorAll('.modal-show').forEach(function(m){ m.classList.remove('modal-show'); });
+            document.body.style.overflow = '';
+        }
+    });
+
+    // ===== 首次访问弹出免责声明 =====
+    (function(){
+        if(!sessionStorage.getItem('disclaimer_accepted')){
+            setTimeout(function(){
+                openModal('disclaimerModal');
+            }, 1500); // 入场动画后延迟弹出
+        }
+    })();
+
+    // ===== 入场动画视频 =====
+    (function(){
+        var overlay = document.getElementById('introOverlay');
+        var video = document.getElementById('introVideo');
+        var skip = document.getElementById('introSkip');
+        if(!overlay || !video) return;
+
+        if(sessionStorage.getItem('intro_played')){
+            overlay.style.display = 'none';
+            return;
+        }
+
+        function closeIntro(){
+            overlay.classList.add('intro-hidden');
+            sessionStorage.setItem('intro_played', '1');
+            setTimeout(function(){ overlay.style.display = 'none'; }, 600);
+        }
+
+        video.addEventListener('ended', closeIntro);
+        skip.addEventListener('click', closeIntro);
+        overlay.addEventListener('click', function(e){
+            if(e.target === overlay || e.target.classList.contains('intro-fade-bottom')) closeIntro();
+        });
+
+        video.play().catch(function(){ closeIntro(); });
+    })();
+    </script>
+</body>
+</html>
