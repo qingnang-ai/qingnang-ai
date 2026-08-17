@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}用户详情 · 管理后台{% endblock %}
+
+{% block content %}
+<div class="admin-page record-detail-page">
+    <a href="/admin" class="back-link">← 返回管理后台</a>
+
+    <div class="detail-header">
+        <h1>👤 {{ user.username }}</h1>
+        <p>用户ID：{{ user.id }} · 注册时间：{{ user.created_at }}</p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">📋 检测记录（{{ records|length }}）</div>
+        {% if records %}
+        <div class="record-list">
+            {% for r in records %}
+            <div class="record-card">
+                <a href="/admin/record/{{ r.id }}" class="record-main" style="text-decoration:none;color:inherit;">
+                    <div class="record-icon">
+                        {% if r.ai_report %}🤖{% elif r.tongue_primary %}👅{% else %}📋{% endif %}
+                    </div>
+                    <div class="record-info">
+                        <div>
+                            <span class="record-title">{{ r.child_name or '未命名' }}</span>
+                            {% if r.child_age %}<span class="record-age">{{ r.child_age }}</span>{% endif %}
+                        </div>
+                        <div class="record-meta">
+                            <span class="record-time">{{ r.created_at }}</span>
+                            {% if r.tongue_primary %}<span class="tag tag-jade">{{ r.tongue_primary }}</span>{% endif %}
+                            {% if r.ai_report %}<span class="tag tag-gold">AI报告</span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="record-arrow">›</div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>该用户暂无检测记录</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="detail-actions">
+        <a href="/admin" class="btn btn-outline">返回后台</a>
+    </div>
+</div>
+{% endblock %}
