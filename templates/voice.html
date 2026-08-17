@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}声音分析{% endblock %}
+{% block nav_voice %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">🎤 声音分析 · 闻诊</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">基于中医闻诊理论，通过分析声音的力度、音调、清晰度和语速，辨识体质倾向</p>
+
+    <div class="voice-reading-box">
+        <div class="voice-reading-label">📖 请朗读以下文字（约8秒）：</div>
+        <div class="voice-reading-text">{{ reading_text }}</div>
+    </div>
+
+    <div class="voice-record-area">
+        <button class="voice-record-btn" id="recordBtn" onclick="toggleRecord()">
+            <span class="voice-record-icon" id="recordIcon">🎤</span>
+            <span class="voice-record-text" id="recordText">开始录音</span>
+        </button>
+        <div class="voice-timer hidden" id="voiceTimer">⏱️ <span id="timerNum">0</span>秒</div>
+    </div>
+
+    <audio id="playback" class="voice-playback hidden" controls></audio>
+
+    <div class="voice-tips">
+        <p>📌 录音建议：</p>
+        <ul>
+            <li>在安静环境中录音，避免背景噪音</li>
+            <li>距麦克风约20-30厘米，正常音量朗读</li>
+            <li>尽量一口气读完，自然停顿即可</li>
+        </ul>
+    </div>
+</div>
+
+<div id="loadingDiv" class="card hidden">
+    <div class="loader"></div>
+    <p class="text-center" style="color:var(--muted);">正在进行声音分析……</p>
+</div>
+
+<div id="resultDiv"></div>
+
+<div class="danger-strip">
+    ⚠️ 声音分析基于音频特征提取与中医闻诊理论，仅作健康科普参考，不构成医疗诊断。录制环境与设备会影响结果。
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let audioContext=null, mediaStream=null, processor=null, source=null;
+let audioBuffer=[], isRecording=false, startTime=0, timerInterval=null;
+
+async function toggleRecord(){
+    if(isRecording){
+        stopRecord();
+    } else {
+        await startRecord();
+    }
+}
+
+async function startRecord(){
+    try{
+        mediaStream=await navigator.mediaDevices.getUserMedia({audio:true});
+        audioContext=new AudioContext();
+        source=audioContext.createMediaStreamSource(mediaStream);
+        processor=audioContext.createScriptProcessor(4096,1,1);
+        audioBuffer=[];
+        isRecording=true;
+        startTime=Date.now();
+
+        processor.onaudioprocess=function(e){
+            if(!isRecording)return;
+            const input=e.inputBuffer.getChannelData(0);
+            audioBuffer.push(new Float32Array(input));
+        };
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+
+        document.getElementById('recordIcon').textContent='⏹';
+        document.getElementById('recordText').textContent='停止录音';
+        document.getElementById('recordBtn').classList.add('recording');
+        document.getElementById('voiceTimer').classList.remove('hidden');
+        document.getElementById('playback').classList.add('hidden');
+
+        timerInterval=setInterval(()=>{
+            const sec=Math.floor((Date.now()-startTime)/1000);
+            document.getElementById('timerNum').textContent=sec;
+        },200);
+    }catch(e){
+        alert('无法访问麦克风：'+e.message);
+    }
+}
+
+function stopRecord(){
+    isRecording=false;
+    clearInterval(timerInterval);
+    if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());}
+    if(processor){processor.disconnect();}
+    if(source){source.disconnect();}
+
+    const sr=audioContext.sampleRate;
+    const totalLen=audioBuffer.reduce((a,b)=>a+b.length,0);
+    const merged=new Float32Array(totalLen);
+    let off=0;
+    for(const chunk of audioBuffer){merged.set(chunk,off);off+=chunk.length;}
+
+    const wavBlob=encodeWAV(merged,sr);
+    const url=URL.createObjectURL(wavBlob);
+    const playback=document.getElementById('playback');
+    playback.src=url;
+    playback.classList.remove('hidden');
+
+    document.getElementById('recordIcon').textContent='🎤';
+    document.getElementById('recordText').textContent='重新录音';
+    document.getElementById('recordBtn').classList.remove('recording');
+
+    if(audioContext){audioContext.close();audioContext=null;}
+
+    const fd=new FormData();
+    fd.append('audio',wavBlob,'voice.wav');
+    sendVoice(fd);
+}
+
+function encodeWAV(samples,sr){
+    const buffer=new ArrayBuffer(44+samples.length*2);
+    const view=new DataView(buffer);
+    const ws=(o,s)=>{for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i));};
+    ws(0,'RIFF');view.setUint32(4,36+samples.length*2,true);
+    ws(8,'WAVE');ws(12,'fmt ');view.setUint32(16,16,true);
+    view.setUint16(20,1,true);view.setUint16(22,1,true);
+    view.setUint32(24,sr,true);view.setUint32(28,sr*2,true);
+    view.setUint16(32,2,true);view.setUint16(34,16,true);
+    ws(36,'data');view.setUint32(40,samples.length*2,true);
+    let o=44;
+    for(let i=0;i<samples.length;i++){
+        const s=Math.max(-1,Math.min(1,samples[i]));
+        view.setInt16(o,s<0?s*0x8000:s*0x7FFF,true);
+        o+=2;
+    }
+    return new Blob([buffer],{type:'audio/wav'});
+}
+
+function sendVoice(fd){
+    document.getElementById('loadingDiv').classList.remove('hidden');
+    document.getElementById('resultDiv').innerHTML='';
+    fetch('/api/voice_analyze',{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(d=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        if(d.error){alert(d.error);return;}
+        const items=[
+            {icon:'🔊',label:'声音力度',data:d.energy},
+            {icon:'🎵',label:'音调高低',data:d.pitch},
+            {icon:'✨',label:'声音清晰度',data:d.clarity},
+            {icon:'🏃',label:'语速快慢',data:d.speed},
+        ];
+        let itemsHTML=items.map(it=>`
+            <div class="voice-result-item">
+                <div class="voice-result-icon">${it.icon}</div>
+                <div class="voice-result-body">
+                    <div class="voice-result-label">${it.label}</div>
+                    <div class="voice-result-desc">${it.data.desc}</div>
+                    <div class="voice-result-tcm">${it.data.tcm}</div>
+                </div>
+            </div>
+        `).join('');
+
+        let hintsHTML='';
+        if(d.constitution_hints && Object.keys(d.constitution_hints).length>0){
+            let tags=Object.entries(d.constitution_hints).map(([k,v])=>
+                `<span class="const-badge ${v>=5?'judge':'tend'}">${k}</span>`
+            ).join('');
+            hintsHTML=`<div class="voice-hints"><strong>体质提示：</strong>${tags}</div>`;
+        }
+
+        document.getElementById('resultDiv').innerHTML=`
+            <div class="card">
+                <div class="card-title">📊 声音分析结果</div>
+                <div class="voice-summary">${d.summary}</div>
+                ${hintsHTML}
+                <div class="voice-results">${itemsHTML}</div>
+                ${d.raw?`<details class="voice-raw-details">
+                    <summary>查看原始音频数据</summary>
+                    <table class="detail-table">
+                        <tr><td>能量(RMS)</td><td>${d.raw.rms}</td></tr>
+                        <tr><td>基频(Hz)</td><td>${d.raw.pitch}</td></tr>
+                        <tr><td>过零率</td><td>${d.raw.zcr}</td></tr>
+                        <tr><td>时长(秒)</td><td>${d.raw.duration}</td></tr>
+                        <tr><td>频谱重心(Hz)</td><td>${d.raw.centroid}</td></tr>
+                    </table>
+                </details>`:''}
+                <p style="font-size:12px;color:var(--muted);margin-top:12px;">分析时间：${d.time}</p>
+            </div>
+        `;
+    })
+    .catch(e=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        alert('分析失败：'+e.message);
+    });
+}
+</script>
+{% endblock %}
