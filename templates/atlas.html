@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}舌象图谱{% endblock %}
+{% block nav_atlas %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">📚 21类舌象特征图谱</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">best.pt 模型标签字典及中文解释</p>
+
+    <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;" id="filterBar">
+        <div class="qa-option selected" onclick="filterGroup('all', this)">全部</div>
+        <div class="qa-option" onclick="filterGroup('综合', this)">综合</div>
+        <div class="qa-option" onclick="filterGroup('舌色', this)">舌色</div>
+        <div class="qa-option" onclick="filterGroup('舌形', this)">舌形</div>
+        <div class="qa-option" onclick="filterGroup('舌面', this)">舌面</div>
+        <div class="qa-option" onclick="filterGroup('舌苔', this)">舌苔</div>
+        <div class="qa-option" onclick="filterGroup('区域形态', this)">区域形态</div>
+    </div>
+
+    <div class="atlas-grid" id="atlasGrid">
+        {% for name, meta in features.items() %}
+        <div class="atlas-card" data-group="{{ meta.group }}">
+            <div class="atlas-name">{{ meta.cn }}</div>
+            <div class="atlas-group">{{ meta.group }} · {{ name }}</div>
+            <div class="atlas-desc">{{ meta.desc }}</div>
+            <div style="margin-top:8px;">
+                {% for food in meta.foods %}
+                <span class="chip">{{ food }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="tip-strip">
+    <b>特别说明：</b>"肾区/肝胆区/脾胃区/心肺区"的凹凸标签是区域形态类别，应展示为"区域形态观察"，不代表对应脏器疾病。
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterGroup(group, el){
+    document.querySelectorAll('#filterBar .qa-option').forEach(o=>o.classList.remove('selected'));
+    el.classList.add('selected');
+    document.querySelectorAll('#atlasGrid .atlas-card').forEach(c=>{
+        if(group==='all' || c.dataset.group===group){
+            c.style.display='';
+        } else {
+            c.style.display='none';
+        }
+    });
+}
+</script>
+{% endblock %}
