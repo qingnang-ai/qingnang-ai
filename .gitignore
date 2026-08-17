@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+qingnang.db
+best.pt
+*.log
+.env
+venv/
+.venv/
+node_modules/
+*.pptx
+static/video/intro.mp4
