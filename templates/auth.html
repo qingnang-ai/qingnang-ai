@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ '注册' if mode == 'register' else '登录' }}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">🌿</div>
+            <h1>{{ '注册青囊AI' if mode == 'register' else '欢迎回来' }}</h1>
+            <p>{{ '创建账号，保存孩子的健康检测记录' if mode == 'register' else '登录后查看孩子的体质分析记录' }}</p>
+        </div>
+
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('register' if mode == 'register' else 'login') }}" class="auth-form">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" name="username" placeholder="请输入用户名" required autocomplete="username"
+                       value="{{ request.form.get('username', '') }}">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" name="password" placeholder="{{ '至少6位' if mode == 'register' else '请输入密码' }}"
+                       required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-gold btn-lg btn-block">
+                {{ '注册并登录' if mode == 'register' else '登录' }}
+            </button>
+        </form>
+
+        <div class="auth-switch">
+            {% if mode == 'register' %}
+                已有账号？<a href="{{ url_for('login') }}">立即登录</a>
+            {% else %}
+                还没有账号？<a href="{{ url_for('register') }}">免费注册</a>
+            {% endif %}
+        </div>
+
+        <div class="auth-note">
+            <span>🔒 密码使用 Werkzeug 加密存储，安全可靠</span>
+            <span>📋 登录后可保存舌象检测、体质问卷、AI报告记录</span>
+            <span>👨‍👩‍👧 支持多个孩子、多次检测的历史记录管理</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
