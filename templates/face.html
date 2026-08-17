@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}面相分析{% endblock %}
+{% block nav_face %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">👁️ 面相分析 · 望诊</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">基于中医面部五色望诊理论，分析额头、鼻部、双颊、下颌五个区域的面色，辨识青赤黄白黑五色倾向</p>
+
+    <div class="face-tabs">
+        <button class="face-tab active" onclick="switchTab('camera')">📷 摄像头拍摄</button>
+        <button class="face-tab" onclick="switchTab('upload')">📁 上传图片</button>
+    </div>
+
+    <div id="cameraPanel" class="face-panel">
+        <div class="camera-box">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" class="hidden"></canvas>
+        </div>
+        <div class="camera-controls">
+            <button class="btn btn-primary" id="startCamBtn" onclick="startCamera()">📷 开启摄像头</button>
+            <button class="btn btn-gold hidden" id="captureBtn" onclick="capturePhoto()">📸 拍照分析</button>
+            <button class="btn btn-outline hidden" id="stopCamBtn" onclick="stopCamera()">关闭摄像头</button>
+        </div>
+    </div>
+
+    <div id="uploadPanel" class="face-panel hidden">
+        <div class="upload-zone" onclick="document.getElementById('faceFile').click()">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">点击上传面部照片</div>
+            <input type="file" id="faceFile" accept="image/*" class="hidden" onchange="uploadFile(event)">
+        </div>
+    </div>
+</div>
+
+<div id="loadingDiv" class="card hidden">
+    <div class="loader"></div>
+    <p class="text-center" style="color:var(--muted);">正在进行面部分析……</p>
+</div>
+
+<div id="resultDiv"></div>
+
+<div class="danger-strip">
+    ⚠️ 面相分析基于中医望诊理论与图像颜色检测，仅作健康科普参考，不构成医疗诊断。拍摄光线、角度均会影响结果。
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tab){
+    document.querySelectorAll('.face-tab').forEach(t=>t.classList.remove('active'));
+    if(tab==='camera'){document.querySelector('.face-tab:nth-child(1)').classList.add('active');}
+    else{document.querySelector('.face-tab:nth-child(2)').classList.add('active');}
+    document.getElementById('cameraPanel').classList.toggle('hidden',tab!=='camera');
+    document.getElementById('uploadPanel').classList.toggle('hidden',tab!=='upload');
+}
+
+let stream=null;
+async function startCamera(){
+    try{
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});
+        document.getElementById('video').srcObject=stream;
+        document.getElementById('startCamBtn').classList.add('hidden');
+        document.getElementById('captureBtn').classList.remove('hidden');
+        document.getElementById('stopCamBtn').classList.remove('hidden');
+    }catch(e){
+        alert('无法访问摄像头：'+e.message+'\n请使用上传图片功能');
+    }
+}
+function stopCamera(){
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+    document.getElementById('startCamBtn').classList.remove('hidden');
+    document.getElementById('captureBtn').classList.add('hidden');
+    document.getElementById('stopCamBtn').classList.add('hidden');
+}
+function capturePhoto(){
+    const video=document.getElementById('video');
+    const canvas=document.getElementById('canvas');
+    canvas.width=video.videoWidth||640;
+    canvas.height=video.videoHeight||480;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    canvas.toBlob(blob=>{
+        const fd=new FormData();
+        fd.append('image',blob,'face.jpg');
+        sendAnalyze(fd);
+    },'image/jpeg',0.85);
+    stopCamera();
+}
+function uploadFile(e){
+    const file=e.target.files[0];
+    if(!file)return;
+    const fd=new FormData();
+    fd.append('image',file);
+    sendAnalyze(fd);
+}
+
+const COLOR_BADGE={'青':'badge-green','赤':'badge-red','黄':'badge-yellow','白':'badge-white','黑':'badge-dark','正常':'badge-normal'};
+
+function sendAnalyze(fd){
+    document.getElementById('loadingDiv').classList.remove('hidden');
+    document.getElementById('resultDiv').innerHTML='';
+    fetch('/api/face_analyze',{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(d=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        if(d.error){alert(d.error);return;}
+        let zonesHTML=d.zones.map(z=>`
+            <div class="face-zone-card">
+                <div class="face-zone-header">
+                    <span class="face-zone-name">${z.zone}</span>
+                    <span class="face-zone-organ">${z.organ}</span>
+                    <span class="color-badge ${COLOR_BADGE[z.color]||'badge-normal'}">${z.color}</span>
+                </div>
+                <div class="face-zone-desc">${z.desc}</div>
+                <div class="face-zone-tcm">${z.tcm}</div>
+                ${z.hint?`<div class="face-zone-hint">💡 ${z.hint}</div>`:''}
+            </div>
+        `).join('');
+        document.getElementById('resultDiv').innerHTML=`
+            <div class="card">
+                <div class="card-title">📊 面相分析结果</div>
+                <div class="face-summary">${d.summary}</div>
+                <div class="img-compare" style="margin:16px 0;">
+                    <div class="img-box">
+                        <img src="data:image/jpeg;base64,${d.annotated_image}" alt="面部分析图">
+                        <div class="img-label">面部分区标注图</div>
+                    </div>
+                </div>
+                <div class="face-zones-grid">${zonesHTML}</div>
+                <p style="font-size:12px;color:var(--muted);margin-top:12px;">分析时间：${d.time}</p>
+            </div>
+        `;
+    })
+    .catch(e=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        alert('分析失败：'+e.message);
+    });
+}
+</script>
+{% endblock %}
