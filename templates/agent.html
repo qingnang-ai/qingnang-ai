@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}青囊客服{% endblock %}
+{% block nav_agent %}active{% endblock %}
+
+{% block content %}
+<div class="agent-container">
+    <div class="agent-header">
+        <div class="agent-avatar">🎧</div>
+        <div class="agent-intro">
+            <div class="agent-name">青囊客服</div>
+            <div class="agent-desc">平台使用指引 · 功能咨询 · 产品答疑</div>
+        </div>
+    </div>
+
+    {% if diag_context %}
+    <div class="agent-diag-badge">
+        <span class="badge-icon">📡</span>
+        <span class="badge-text">已检测到您的检测数据，客服可为您推荐合适的养生产品</span>
+    </div>
+    {% endif %}
+
+    <div class="chat-box" id="chatBox">
+        <div class="chat-msg agent-msg">
+            <div class="msg-avatar">🎧</div>
+            <div class="msg-bubble">
+                <p>您好，欢迎来到青囊AI！我是您的专属客服，有什么可以帮您的吗？</p>
+                <p style="margin-top:8px;">您可以试试问我：</p>
+                <div class="quick-asks">
+                    <button class="quick-ask" onclick="quickAsk('舌象检测怎么用？')">舌象检测怎么用</button>
+                    <button class="quick-ask" onclick="quickAsk('养生坊有哪些产品？')">养生坊产品介绍</button>
+                    <button class="quick-ask" onclick="quickAsk('怎么生成AI报告？')">怎么生成AI报告</button>
+                    <button class="quick-ask" onclick="quickAsk('支付遇到问题怎么办？')">支付问题</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-area">
+        <div class="chat-input-wrap">
+            <textarea id="chatInput" class="chat-input" placeholder="输入您的问题，如：舌象检测怎么用？养生坊有什么产品？" rows="2"></textarea>
+            <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()">
+                <span class="send-icon">➤</span>
+            </button>
+        </div>
+        <div class="chat-hint">💡 青囊客服为您解答平台使用问题，健康咨询请使用四诊功能检测</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var chatHistory = [];
+var diagContext = {{ diag_context|tojson|safe if diag_context else '""' }};
+var isWaiting = false;
+
+function scrollChatBottom(){
+    var box = document.getElementById('chatBox');
+    box.scrollTop = box.scrollHeight;
+}
+
+function addMessage(role, text){
+    var box = document.getElementById('chatBox');
+    var msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-msg ' + (role === 'user' ? 'user-msg' : 'agent-msg');
+    var avatar = role === 'user' ? '👤' : '🎧';
+    var html = '';
+    html += '<div class="msg-avatar">' + avatar + '</div>';
+    html += '<div class="msg-bubble">';
+    if(role === 'agent'){
+        html += formatAgentText(text);
+    } else {
+        html += '<p>' + escapeHtml(text) + '</p>';
+    }
+    html += '</div>';
+    msgDiv.innerHTML = html;
+    box.appendChild(msgDiv);
+    scrollChatBottom();
+}
+
+function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatAgentText(text){
+    var html = escapeHtml(text);
+    html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    html = html.replace(/^###\s(.+)$/gm,'<div class="agent-section">$1</div>');
+    html = html.replace(/^##\s(.+)$/gm,'<div class="agent-section">$1</div>');
+    html = html.replace(/^&gt;\s(.+)$/gm,'<div class="agent-disclaimer">$1</div>');
+    html = html.replace(/\n/g,'<br>');
+    return html;
+}
+
+function addLoading(){
+    var box = document.getElementById('chatBox');
+    var msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-msg agent-msg';
+    msgDiv.id = 'loadingMsg';
+    msgDiv.innerHTML = '<div class="msg-avatar">🎧</div><div class="msg-bubble"><div class="typing-loader"><span></span><span></span><span></span></div></div>';
+    box.appendChild(msgDiv);
+    scrollChatBottom();
+}
+
+function removeLoading(){
+    var el = document.getElementById('loadingMsg');
+    if(el) el.remove();
+}
+
+function quickAsk(text){
+    document.getElementById('chatInput').value = text;
+    sendMessage();
+}
+
+function sendMessage(){
+    if(isWaiting) return;
+    var input = document.getElementById('chatInput');
+    var msg = input.value.trim();
+    if(!msg) return;
+
+    addMessage('user', msg);
+    chatHistory.push({user: msg, agent: ''});
+    input.value = '';
+    isWaiting = true;
+    document.getElementById('sendBtn').disabled = true;
+
+    addLoading();
+
+    fetch('/api/agent_chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            message: msg,
+            diag_context: diagContext,
+            history: chatHistory.slice(0, -1)
+        })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        removeLoading();
+        isWaiting = false;
+        document.getElementById('sendBtn').disabled = false;
+        if(d.error){
+            addMessage('agent', '⚠️ ' + d.error);
+        } else {
+            addMessage('agent', d.reply);
+            chatHistory[chatHistory.length - 1].agent = d.reply;
+        }
+    })
+    .catch(function(e){
+        removeLoading();
+        isWaiting = false;
+        document.getElementById('sendBtn').disabled = false;
+        addMessage('agent', '⚠️ 网络错误，请稍后再试');
+    });
+}
+
+document.getElementById('chatInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendMessage();
+    }
+});
+</script>
+{% endblock %}
