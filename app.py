@@ -29,7 +29,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "qingnang-dev-change-in-production")
 
-YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", os.path.join(os.path.expanduser("~"), "yolo", "best.pt"))
+YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "best.pt"))
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qingnang.db")
 
 # ============================================================
