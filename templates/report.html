@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}AI报告{% endblock %}
+{% block nav_report %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">🤖 AI综合健康报告</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:20px;">完成望（舌诊）、闻（声音）、切（面相）三项检测后解锁AI报告，问（问卷）为选做加分项</p>
+
+    <div class="diag-grid mb-20">
+        <div class="diag-card diag-required" id="diag-wang">
+            <img src="{{ url_for('static', filename='images/wang.jpg') }}" class="diag-icon" alt="望">
+            <div class="diag-info">
+                <div class="diag-name">望 · 舌诊 <span class="diag-tag">必做</span></div>
+                <div class="diag-status" id="txt-tongue">未完成</div>
+            </div>
+            <span class="status-dot no" id="dot-tongue"></span>
+        </div>
+        <div class="diag-card diag-required" id="diag-wen">
+            <img src="{{ url_for('static', filename='images/wen.jpg') }}" class="diag-icon" alt="闻">
+            <div class="diag-info">
+                <div class="diag-name">闻 · 声音 <span class="diag-tag">必做</span></div>
+                <div class="diag-status" id="txt-voice">未完成</div>
+            </div>
+            <span class="status-dot no" id="dot-voice"></span>
+        </div>
+        <div class="diag-card diag-optional" id="diag-wen-ask">
+            <img src="{{ url_for('static', filename='images/wen_ask.jpg') }}" class="diag-icon" alt="问">
+            <div class="diag-info">
+                <div class="diag-name">问 · 问卷 <span class="diag-tag opt">选做</span></div>
+                <div class="diag-status" id="txt-qa">未完成</div>
+            </div>
+            <span class="status-dot no" id="dot-qa"></span>
+        </div>
+        <div class="diag-card diag-required" id="diag-qie">
+            <img src="{{ url_for('static', filename='images/qie.jpg') }}" class="diag-icon" alt="切">
+            <div class="diag-info">
+                <div class="diag-name">切 · 面相 <span class="diag-tag">必做</span></div>
+                <div class="diag-status" id="txt-face">未完成</div>
+            </div>
+            <span class="status-dot no" id="dot-face"></span>
+        </div>
+    </div>
+
+    <div class="status-item mb-20" style="display:flex;">
+        <span class="status-dot no" id="dot-api"></span>
+        <span id="txt-api">AI引擎检测中…</span>
+    </div>
+
+    <div id="lockSection" class="lock-section">
+        <div class="lock-icon">🔒</div>
+        <p class="lock-text" id="lockText">完成望·舌诊、闻·声音、切·面相三项检测后解锁AI报告</p>
+        <div class="lock-progress" id="lockProgress">
+            <span class="prog-item" id="prog-wang">望 · 舌诊</span>
+            <span class="prog-item" id="prog-wen">闻 · 声音</span>
+            <span class="prog-item" id="prog-qie">切 · 面相</span>
+        </div>
+    </div>
+
+    <div id="unlockSection" class="hidden text-center" style="margin-bottom:20px;">
+        <button class="btn btn-primary btn-lg" id="reportBtn" onclick="generateReport()">🚀 生成AI健康报告</button>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px;">望闻问三项已全部完成，可以生成报告了！</p>
+    </div>
+</div>
+
+<div id="loadingDiv" class="card hidden">
+    <div class="loader"></div>
+    <p class="text-center" style="color:var(--muted);">DeepSeek AI正在综合四诊数据生成健康报告……</p>
+</div>
+
+<div id="reportDiv" class="hidden"></div>
+
+<div class="danger-strip">
+    ⚠️ 以上报告由AI生成，仅作中医体质健康科普参考，不构成医疗诊断，不能替代医师诊疗，身体不适请及时就医。
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var diagDone = {tongue:false, voice:false, face:false};
+
+fetch('/api/status').then(r=>r.json()).then(d=>{
+    if(d.tongue){document.getElementById('dot-tongue').className='status-dot ok';document.getElementById('txt-tongue').textContent='已完成 ✓';document.getElementById('diag-wang').classList.add('done');diagDone.tongue=true;document.getElementById('prog-wang').classList.add('done');}
+    if(d.voice){document.getElementById('dot-voice').className='status-dot ok';document.getElementById('txt-voice').textContent='已完成 ✓';document.getElementById('diag-wen').classList.add('done');diagDone.voice=true;document.getElementById('prog-wen').classList.add('done');}
+    if(d.qa){document.getElementById('dot-qa').className='status-dot ok';document.getElementById('txt-qa').textContent='已完成 ✓';document.getElementById('diag-wen-ask').classList.add('done');}
+    if(d.face){document.getElementById('dot-face').className='status-dot ok';document.getElementById('txt-face').textContent='已完成 ✓';document.getElementById('diag-qie').classList.add('done');diagDone.face=true;document.getElementById('prog-qie').classList.add('done');}
+    if(d.api_ready){
+        document.getElementById('dot-api').className='status-dot ok';
+        document.getElementById('txt-api').textContent='AI引擎已就绪 ✓';
+    } else {
+        document.getElementById('txt-api').textContent='AI引擎未配置';
+    }
+    checkUnlock();
+});
+
+function checkUnlock(){
+    var missing = [];
+    if(!diagDone.tongue) missing.push('望·舌诊');
+    if(!diagDone.voice) missing.push('闻·声音');
+    if(!diagDone.face) missing.push('切·面相');
+    if(missing.length === 0){
+        document.getElementById('lockSection').classList.add('hidden');
+        document.getElementById('unlockSection').classList.remove('hidden');
+    } else {
+        document.getElementById('lockSection').classList.remove('hidden');
+        document.getElementById('unlockSection').classList.add('hidden');
+        document.getElementById('lockText').textContent = '还差 ' + missing.join('、') + '，完成后即可解锁AI报告';
+    }
+}
+
+function generateReport(){
+    document.getElementById('loadingDiv').classList.remove('hidden');
+    document.getElementById('reportDiv').classList.add('hidden');
+    document.getElementById('reportBtn').disabled = true;
+
+    fetch('/api/report', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        document.getElementById('reportBtn').disabled = false;
+        if(d.error){ alert(d.error); return; }
+        var reportHtml = d.report
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+            .replace(/^###\s(.+)$/gm,'<h3 class="report-h3">$1</h3>')
+            .replace(/^##\s(.+)$/gm,'<h3 class="report-h3">$1</h3>')
+            .replace(/^#\s(.+)$/gm,'<h3 class="report-h3">$1</h3>')
+            .replace(/\n/g,'<br>');
+
+        var foodHtml = '';
+        if(d.food_therapy){
+            var foodText = d.food_therapy
+                .replace(/&/g,'&amp;')
+                .replace(/</g,'&lt;')
+                .replace(/>/g,'&gt;')
+                .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+                .replace(/^###\s(.+)$/gm,'<h3 class="report-h3">$1</h3>')
+                .replace(/^##\s(.+)$/gm,'<h3 class="report-h3">$1</h3>')
+                .replace(/^#\s(.+)$/gm,'<h3 class="report-h3">$1</h3>')
+                .replace(/✅/g,'<span class="food-yes">✅</span>')
+                .replace(/❌/g,'<span class="food-no">❌</span>')
+                .replace(/\n/g,'<br>');
+            foodHtml = `
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-title">🍲 体质食疗推荐</div>
+                    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">基于您的体质倾向「${d.constitution || '综合分析'}」生成，以下均为日常食材推荐，非药品</p>
+                    <div class="report-content">${foodText}</div>
+                </div>
+            `;
+        }
+
+        var shelfHtml = '';
+        if(d.shelf && d.shelf.length > 0){
+            var shelfCards = d.shelf.map(function(item){
+                return `
+                    <div class="shelf-card">
+                        <div class="shelf-icon">${item.icon}</div>
+                        <div class="shelf-tag">${item.tag}</div>
+                        <div class="shelf-name">${item.name}</div>
+                        <div class="shelf-desc">${item.desc}</div>
+                        <div class="shelf-price">${item.price}</div>
+                        <div class="shelf-status">即将上线 · 敬请期待</div>
+                    </div>
+                `;
+            }).join('');
+            shelfHtml = `
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-title">🛒 青囊养生坊</div>
+                    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">根据您的体质分析，为您推荐以下养生产品（虚拟商品，即将上线）</p>
+                    <div class="shelf-grid">${shelfCards}</div>
+                    <div class="shelf-notice">⚠️ 以上为虚拟商品展示，实际产品正在筹备中，上线后将根据您的体质分析精准推荐</div>
+                </div>
+            `;
+        }
+
+        var saveSection = '';
+        {% if current_user %}
+        saveSection = `
+            <div class="card" style="margin-top:16px;">
+                <div class="card-title">💾 保存到我的记录</div>
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">将本次检测结果和AI报告保存到您的主页</p>
+                <div class="save-form">
+                    <input type="text" id="saveChildName" placeholder="孩子昵称" class="save-input">
+                    <select id="saveChildAge" class="save-input">
+                        <option value="1-3">1-3岁</option>
+                        <option value="4-6">4-6岁</option>
+                        <option value="7-12">7-12岁</option>
+                    </select>
+                    <button class="btn btn-gold" onclick="saveReport(${JSON.stringify(d.report).replace(/'/g,"&#39;")})">保存记录</button>
+                </div>
+            </div>
+        `;
+        {% else %}
+        saveSection = `
+            <div class="card" style="margin-top:16px; text-align:center;">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">💡 <a href="/login" style="color:var(--jade);font-weight:600;">登录</a>或<a href="/register" style="color:var(--jade);font-weight:600;">注册</a>后可保存检测记录</p>
+            </div>
+        `;
+        {% endif %}
+        document.getElementById('reportDiv').innerHTML = `
+            <div class="card">
+                <div class="card-title">📄 AI健康报告</div>
+                <div class="report-content">${reportHtml}</div>
+            </div>
+        ` + foodHtml + shelfHtml + saveSection;
+        document.getElementById('reportDiv').classList.remove('hidden');
+        document.getElementById('reportDiv').scrollIntoView({behavior:'smooth'});
+    })
+    .catch(e=>{
+        document.getElementById('loadingDiv').classList.add('hidden');
+        document.getElementById('reportBtn').disabled = false;
+        alert('生成失败：'+e);
+    });
+}
+
+function saveReport(reportText){
+    var name = document.getElementById('saveChildName').value.trim();
+    var age = document.getElementById('saveChildAge').value;
+    fetch('/api/save_record', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({child_name:name, child_age:age, ai_report:reportText})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        if(d.ok){
+            alert('记录已保存到您的主页！');
+            location.href = '/dashboard';
+        } else {
+            alert('保存失败：'+(d.error||'未知错误'));
+        }
+    })
+    .catch(e=>alert('保存失败：'+e));
+}
+</script>
+{% endblock %}
