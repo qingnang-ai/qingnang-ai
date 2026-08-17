@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}支付结果{% endblock %}
+
+{% block content %}
+<div class="pay-result-wrap">
+    <div class="pay-result-card">
+        <div class="pay-result-icon success">✅</div>
+        <div class="pay-result-title">支付成功</div>
+        <div class="pay-result-desc">您的订单已支付完成，感谢您的支持！</div>
+        {% if order_no %}
+        <div class="pay-result-detail">
+            <div class="detail-row"><span>订单号</span><span>{{ order_no }}</span></div>
+            {% if trade_no %}
+            <div class="detail-row"><span>支付宝交易号</span><span>{{ trade_no }}</span></div>
+            {% endif %}
+        </div>
+        {% endif %}
+        <div class="pay-result-actions">
+            <a href="/shop" class="btn btn-outline">继续购物</a>
+            <a href="/" class="btn btn-gold">返回首页</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
