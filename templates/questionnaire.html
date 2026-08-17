@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}体质问卷{% endblock %}
+{% block nav_qa %}active{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-title">📋 儿童中医体质问卷</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">基于《儿童体质中医分型与判定标准》（赵霞等，2023）| 评分采用Likert 5分法</p>
+
+    <div id="tongueNotice" class="tip-strip" style="margin-bottom:16px; display:none;">
+        <b>👅 舌象数据已融入：</b>检测到的舌象特征已自动参与体质评分，问卷中的舌象问题已移除
+    </div>
+    <div id="tongueTip" class="tip-strip" style="margin-bottom:16px;">
+        <b>💡 提示：</b>舌象相关问题已由AI舌象检测自动完成，请先完成<a href="/tongue" style="color:var(--gold); font-weight:700;">舌象分析</a>以获得更精准的体质判定
+    </div>
+
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:20px;">
+        <label style="font-size:14px; font-weight:700;">年龄段：</label>
+        <select id="ageGroup" onchange="loadQuestionnaire()" style="padding:8px 16px; border-radius:10px; border:1px solid var(--line); font-size:14px; font-family:inherit;">
+            <option value="1-3">1-3岁</option>
+            <option value="4-6">4-6岁</option>
+            <option value="7-12">7-12岁</option>
+        </select>
+    </div>
+
+    <div id="qaContainer">
+        <div class="loader"></div>
+        <p class="text-center" style="color:var(--muted);">加载问卷中……</p>
+    </div>
+
+    <div class="text-center mt-20">
+        <button class="btn btn-primary btn-lg" onclick="submitQuestionnaire()">📊 生成体质判定</button>
+    </div>
+</div>
+
+<div id="resultDiv" class="hidden"></div>
+
+<div class="danger-strip">
+    ⚠️ 体质判定结果仅作科普参考。五脏体质判定结果仅供参考，需结合四诊资料由医师判定。
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let qaData = {};
+const answers = {};
+
+function loadQuestionnaire(){
+    const age = document.getElementById('ageGroup').value;
+    fetch('/api/questionnaire_data?age='+age)
+    .then(r=>r.json())
+    .then(d=>{
+        qaData = d;
+        renderQuestionnaire();
+    });
+}
+
+function renderQuestionnaire(){
+    const container = document.getElementById('qaContainer');
+    let html = '';
+    for(const [constName, constInfo] of Object.entries(qaData)){
+        const emoji = constName.includes('心')?'🫀':constName.includes('肺')?'🫁':constName.includes('肝')?'🌱':constName.includes('脾')?'🌾':constName.includes('肾')?'💧':'📋';
+        html += `<div class="qa-group">
+            <div class="qa-group-header" onclick="toggleGroup(this)">
+                <span>${emoji} ${constName}（${constInfo.items.length}题）</span>
+                <span class="arrow">▼</span>
+            </div>
+            <div class="qa-group-body">
+                <p style="font-size:12px; color:var(--muted); margin:8px 0;">${constInfo.desc}</p>
+                ${constInfo.items.map((item,i)=>`
+                    <div class="qa-item">
+                        <div class="qa-question">${i+1}. ${item.question}</div>
+                        <div class="qa-options">
+                            ${item.options.map((opt,oi)=>`
+                                <div class="qa-option" data-const="${constName}" data-idx="${i}" data-score="${opt[1]}" onclick="selectOption(this)">${opt[0]}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+    }
+    container.innerHTML = html;
+}
+
+function toggleGroup(header){
+    header.classList.toggle('open');
+    header.nextElementSibling.classList.toggle('open');
+}
+
+function selectOption(el){
+    const constName = el.dataset.const;
+    const idx = parseInt(el.dataset.idx);
+    const score = parseInt(el.dataset.score);
+    if(!answers[constName]) answers[constName] = {};
+    answers[constName][idx] = score;
+    el.parentElement.querySelectorAll('.qa-option').forEach(o=>o.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+function submitQuestionnaire(){
+    const ageGroup = document.getElementById('ageGroup').value;
+    const answersMap = {};
+    for(const [constName, constInfo] of Object.entries(qaData)){
+        const arr = [];
+        for(let i=0; i<constInfo.items.length; i++){
+            arr.push(answers[constName]?.[i] || 1);
+        }
+        answersMap[constName] = arr;
+    }
+
+    fetch('/api/questionnaire', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({age_group:ageGroup, answers:answersMap})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        if(d.error){ alert(d.error); return; }
+        showResult(d);
+    });
+}
+
+function showResult(d){
+    let html = '<div class="card"><div class="card-title">📊 体质判定结果</div>';
+    if(d.tongue_integrated){
+        html += '<div class="tip-strip" style="margin-bottom:12px;"><b>👅 舌象数据已融入评分</b> — 舌象检测结果自动参与了体质倾向判定</div>';
+    }
+    if(d.results.length > 0){
+        html += '<div style="margin-bottom:16px;">';
+        d.results.forEach(r=>{
+            const cls = r.level==='判定'?'judge':'tend';
+            html += `<span class="const-badge ${cls}">${r.name} · ${r.level} · ${r.score}%</span>`;
+        });
+        html += '</div>';
+    } else {
+        html += '<p style="color:var(--muted);">各项体质评分均未达到判定/倾向标准，体质较为均衡</p>';
+    }
+
+    html += '<table style="width:100%; border-collapse:collapse; margin-top:16px;"><thead><tr style="border-bottom:2px solid var(--line);"><th style="text-align:left; padding:8px; font-size:13px;">体质类型</th><th style="text-align:right; padding:8px; font-size:13px;">转化分数</th></tr></thead><tbody>';
+    for(const [k,v] of Object.entries(d.scores)){
+        html += `<tr style="border-bottom:1px solid var(--line);"><td style="padding:8px; font-size:13px;">${k}</td><td style="text-align:right; padding:8px; font-size:13px; color:${v>=38?'var(--jade)':'var(--muted)'}; font-weight:700;">${v}%</td></tr>`;
+    }
+    html += '</tbody></table>';
+
+    html += '<div class="text-center mt-20"><a href="/report" class="btn btn-gold">🤖 生成AI报告</a></div>';
+    html += '</div>';
+
+    document.getElementById('resultDiv').innerHTML = html;
+    document.getElementById('resultDiv').classList.remove('hidden');
+    document.getElementById('resultDiv').scrollIntoView({behavior:'smooth'});
+}
+
+fetch('/api/status').then(r=>r.json()).then(s=>{
+    if(s.tongue){
+        document.getElementById('tongueNotice').style.display = 'block';
+        document.getElementById('tongueTip').style.display = 'none';
+    }
+});
+
+loadQuestionnaire();
+</script>
+{% endblock %}
