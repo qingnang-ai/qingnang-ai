@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}管理后台{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="admin-header">
+        <div>
+            <h1>📊 {{ admin_name }} · 管理后台</h1>
+            <p>青囊AI · 数据总览</p>
+        </div>
+        <a href="/admin/logout" class="btn btn-outline btn-sm">退出管理</a>
+    </div>
+
+    <div class="admin-stats">
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon">👥</div>
+            <div class="admin-stat-num">{{ stats.total_users }}</div>
+            <div class="admin-stat-label">注册用户</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon">📋</div>
+            <div class="admin-stat-num">{{ stats.total_records }}</div>
+            <div class="admin-stat-label">检测记录</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon">👅</div>
+            <div class="admin-stat-num">{{ stats.with_tongue }}</div>
+            <div class="admin-stat-label">含舌象分析</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon">🤖</div>
+            <div class="admin-stat-num">{{ stats.with_ai_report }}</div>
+            <div class="admin-stat-label">含AI报告</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">👥 用户列表（{{ users|length }}）</div>
+        {% if users %}
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>注册时间</th>
+                        <th>记录数</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td class="admin-username">{{ u.username }}</td>
+                        <td>{{ u.created_at }}</td>
+                        <td>
+                            {% set count = namespace(val=0) %}
+                            {% for r in records if r.user_id == u.id %}{% set count.val = count.val + 1 %}{% endfor %}
+                            <span class="tag tag-jade">{{ count.val }}</span>
+                        </td>
+                        <td><a href="/admin/user/{{ u.id }}" class="btn btn-outline btn-sm">查看</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>暂无注册用户</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-title">📋 检测记录（{{ records|length }}）</div>
+        {% if records %}
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户</th>
+                        <th>孩子昵称</th>
+                        <th>年龄段</th>
+                        <th>舌象</th>
+                        <th>AI报告</th>
+                        <th>时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td>{{ r.id }}</td>
+                        <td class="admin-username">{{ r.username }}</td>
+                        <td>{{ r.child_name or '—' }}</td>
+                        <td>{{ r.child_age or '—' }}</td>
+                        <td>
+                            {% if r.tongue_primary %}
+                            <span class="tag tag-jade">{{ r.tongue_primary }}</span>
+                            {% else %}
+                            <span class="tag tag-outline">无</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.ai_report %}
+                            <span class="tag tag-gold">有</span>
+                            {% else %}
+                            <span class="tag tag-outline">无</span>
+                            {% endif %}
+                        </td>
+                        <td class="admin-time">{{ r.created_at }}</td>
+                        <td><a href="/admin/record/{{ r.id }}" class="btn btn-outline btn-sm">详情</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>暂无检测记录</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
