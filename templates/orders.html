@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}我的订单{% endblock %}
+
+{% block content %}
+<div class="orders-header">
+    <div class="orders-title">📋 我的订单</div>
+    <a href="/shop" class="btn btn-outline">继续购物</a>
+</div>
+
+{% if orders %}
+<div class="orders-list">
+    {% for o in orders %}
+    <div class="order-card">
+        <div class="order-card-top">
+            <span class="order-no">订单号：{{ o.order_no }}</span>
+            <span class="order-status status-{{ o.status }}">
+                {% if o.status == 'paid' %}✅ 已支付{% else %}⏳ 待支付{% endif %}
+            </span>
+        </div>
+        <div class="order-card-body">
+            <div class="order-info">
+                <div class="order-product">{{ o.product_name }}</div>
+                <div class="order-time">下单时间：{{ o.created_at }}</div>
+                {% if o.paid_at %}<div class="order-time">支付时间：{{ o.paid_at }}</div>{% endif %}
+            </div>
+            <div class="order-amount">¥{{ o.amount }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">🛍️</div>
+    <div class="empty-text">暂无订单记录</div>
+    <a href="/shop" class="btn btn-gold">去逛逛养生坊</a>
+</div>
+{% endif %}
+{% endblock %}
