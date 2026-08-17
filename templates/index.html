@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}首页{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+<!-- ===== Hero 品牌区 ===== -->
+<div class="hero">
+    <div class="hero-tag">青囊AI · 传统中医 × 计算机视觉 × 大模型</div>
+    <h1>青囊·启卷</h1>
+    <p class="hero-slogan">三分钟舌象拍一拍，<br>AI读懂孩子的体质密码。</p>
+    <div class="hero-cta">
+        <a href="/tongue" class="btn btn-gold btn-lg">👅 立即检测舌象</a>
+        <a href="/questionnaire" class="btn btn-outline-light btn-lg">📋 填写体质问卷</a>
+    </div>
+    <div class="hero-stats">
+        <div class="stat"><span class="num">21</span><span class="label">舌象特征</span></div>
+        <div class="stat"><span class="num">15</span><span class="label">体质分型</span></div>
+        <div class="stat"><span class="num">3</span><span class="label">分钟出报告</span></div>
+        <div class="stat"><span class="num">100%</span><span class="label">本地检测</span></div>
+    </div>
+</div>
+
+<!-- ===== 状态进度条 ===== -->
+<div class="status-bar" id="statusBar">
+    <div class="status-item"><span class="status-dot no" id="dot-tongue"></span><span id="txt-tongue">舌象未检测</span></div>
+    <div class="status-item"><span class="status-dot no" id="dot-qa"></span><span id="txt-qa">问卷未完成</span></div>
+    <div class="status-item"><span class="status-dot no" id="dot-model"></span><span id="txt-model">模型加载中</span></div>
+</div>
+
+<!-- ===== 使用流程引导 ===== -->
+<div class="section-header">
+    <h2>三步完成体质分析</h2>
+    <p>从舌象到报告，全流程AI辅助，家长轻松上手</p>
+</div>
+
+<div class="steps-grid">
+    <div class="step-card" onclick="location.href='/tongue'">
+        <div class="step-num">1</div>
+        <div class="step-icon">👅</div>
+        <div class="step-title">舌象智能检测</div>
+        <div class="step-desc">上传一张舌象照片，YOLO模型本地检测21种舌象特征，3秒出结果</div>
+        <div class="step-link">开始检测 →</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-card" onclick="location.href='/questionnaire'">
+        <div class="step-num">2</div>
+        <div class="step-icon">📋</div>
+        <div class="step-title">中医体质问卷</div>
+        <div class="step-desc">基于《儿童体质中医分型与判定标准》，15种体质分型，舌象数据自动融入</div>
+        <div class="step-link">填写问卷 →</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-card" onclick="location.href='/report'">
+        <div class="step-num">3</div>
+        <div class="step-icon">🤖</div>
+        <div class="step-title">AI健康报告</div>
+        <div class="step-desc">DeepSeek AI综合舌象+问卷数据，生成个性化调养建议，通俗易懂</div>
+        <div class="step-link">生成报告 →</div>
+    </div>
+</div>
+
+<!-- ===== 功能入口 ===== -->
+<div class="section-header">
+    <h2>核心功能</h2>
+    <p>四大模块，覆盖舌象检测到健康指导全链路</p>
+</div>
+
+<div class="feature-grid">
+    <a href="/tongue" class="feature-card">
+        <div class="feature-img-wrap"><img src="{{ url_for('static', filename='images/wang.jpg') }}" class="feature-img" alt="望·舌诊"></div>
+        <div class="title">望 · 舌象分析</div>
+        <div class="desc">上传舌象图片<br>AI检测21种特征</div>
+        <div class="card-badge">核心</div>
+    </a>
+    <a href="/questionnaire" class="feature-card">
+        <div class="feature-img-wrap"><img src="{{ url_for('static', filename='images/wen_ask.jpg') }}" class="feature-img" alt="问·问卷"></div>
+        <div class="title">问 · 体质问卷</div>
+        <div class="desc">15项体质量表<br>中医分型判定</div>
+    </a>
+    <a href="/report" class="feature-card">
+        <div class="feature-img-wrap"><img src="{{ url_for('static', filename='images/qie.jpg') }}" class="feature-img" alt="切·面相"></div>
+        <div class="title">切 · AI健康报告</div>
+        <div class="desc">DeepSeek AI综合分析<br>个性化健康建议</div>
+        <div class="card-badge">推荐</div>
+    </a>
+    <a href="/voice" class="feature-card">
+        <div class="feature-img-wrap"><img src="{{ url_for('static', filename='images/wen.jpg') }}" class="feature-img" alt="闻·声音"></div>
+        <div class="title">闻 · 声音分析</div>
+        <div class="desc">录制一段语音<br>AI分析声音特征</div>
+    </a>
+</div>
+
+<!-- ===== 为什么选择青囊AI ===== -->
+<div class="section-header">
+    <h2>为什么选择青囊AI</h2>
+    <p>传统智慧与现代科技的深度融合</p>
+</div>
+
+<div class="why-grid">
+    <div class="why-card">
+        <div class="why-icon">🔬</div>
+        <div class="why-title">本地AI检测</div>
+        <div class="why-desc">YOLO模型本地运行，图片不上传云端，隐私安全有保障，检测速度快至300ms</div>
+    </div>
+    <div class="why-card">
+        <div class="why-icon">📚</div>
+        <div class="why-title">权威标准依据</div>
+        <div class="why-desc">问卷基于《儿童体质中医分型与判定标准》（赵霞等，2023），科学可靠</div>
+    </div>
+    <div class="why-card">
+        <div class="why-icon">🤖</div>
+        <div class="why-title">大模型分析</div>
+        <div class="why-desc">DeepSeek AI综合分析舌象与问卷数据，生成通俗易懂的个性化调养建议</div>
+    </div>
+    <div class="why-card">
+        <div class="why-icon">🎨</div>
+        <div class="why-title">中式美学体验</div>
+        <div class="why-desc">水墨翠绿搭配赭石金，宣纸质感界面，传统中医文化与现代设计交融</div>
+    </div>
+</div>
+
+<!-- ===== 底部CTA ===== -->
+<div class="cta-section">
+    <div class="cta-content">
+        <h2>开始孩子的中医体质探索之旅</h2>
+        <p>三分钟即可获得AI舌象分析 + 体质分型 + 健康建议</p>
+        <a href="/tongue" class="btn btn-gold btn-lg">👅 立即开始</a>
+    </div>
+</div>
+
+<!-- ===== 拍摄建议与免责 ===== -->
+<div class="card">
+    <div class="grid-2">
+        <div>
+            <div class="card-title">📸 拍摄建议</div>
+            <div class="tip-strip">
+                自然光 · 舌体平展 · 无滤镜 · 画面清晰 · 避免过暗或模糊
+            </div>
+        </div>
+        <div>
+            <div class="card-title">⚠️ 免责声明</div>
+            <div class="danger-strip">
+                本应用仅作中医体质健康科普参考，不构成医疗诊断，不能替代医师诊疗，身体不适请及时就医
+            </div>
+            <a href="javascript:void(0)" onclick="openModal('disclaimerModal')" style="font-size:12px;color:var(--gold);margin-top:6px;display:inline-block;">查看完整免责声明 →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+fetch('/api/status').then(r=>r.json()).then(d=>{
+    if(d.tongue){document.getElementById('dot-tongue').className='status-dot ok';document.getElementById('txt-tongue').textContent='舌象已检测 ✓';}
+    if(d.qa){document.getElementById('dot-qa').className='status-dot ok';document.getElementById('txt-qa').textContent='问卷已完成 ✓';}
+    if(d.model_loaded){document.getElementById('dot-model').className='status-dot ok';document.getElementById('txt-model').textContent='模型已就绪 ✓';}
+    else{document.getElementById('txt-model').textContent='模型未加载';}
+});
+</script>
+{% endblock %}
