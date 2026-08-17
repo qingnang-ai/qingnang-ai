@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ feature_name }} - 青囊AI{% endblock %}
+
+{% block content %}
+<div class="card text-center" style="padding:60px 24px;">
+    <div style="font-size:64px; margin-bottom:20px;">🔧</div>
+    <h2 style="font-family:'Ma Shan Zheng',serif; font-size:32px; color:var(--jade); margin-bottom:16px;">{{ feature_name }}</h2>
+    <p style="font-size:20px; color:var(--ink); font-weight:600; margin-bottom:8px;">正在开发，敬请期待</p>
+    <p style="font-size:14px; color:var(--muted); max-width:400px; margin:0 auto 28px; line-height:1.8;">该功能正在紧锣密鼓地开发中，很快将与大家见面。请先体验其他功能，感谢您的关注与耐心！</p>
+    <a href="/" class="btn btn-primary">← 返回首页</a>
+</div>
+{% endblock %}
