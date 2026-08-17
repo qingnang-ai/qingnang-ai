@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}管理员登录{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card admin-auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">🔐</div>
+            <h1>{{ admin_name }} · 管理后台</h1>
+            <p>青囊AI · 管理控制台</p>
+        </div>
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+        <form class="auth-form" method="POST" action="/admin/login">
+            <div class="form-group">
+                <label>管理员密码</label>
+                <input type="password" name="password" placeholder="请输入管理员密码" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">🔑 进入后台</button>
+        </form>
+        <div class="auth-note">
+            <span>⚠️ 仅限授权管理员访问</span>
+            <span>📝 普通用户请<a href="/login" style="color:var(--jade);">点此登录</a></span>
+        </div>
+    </div>
+</div>
+{% endblock %}
